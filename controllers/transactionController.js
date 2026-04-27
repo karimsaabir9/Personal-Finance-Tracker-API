@@ -72,12 +72,21 @@ export const getMonthlySummary = async (req, res, next) => {
             { $match: { user: req.user._id } },
             {
                 $group: {
-                    _id: "$category",
+                    _id: { type: "$type", category: "$category" },
                     totalAmount: { $sum: "$amount" },
                     count: { $sum: 1 }
                 }
             },
-            { $sort: { totalAmount: -1 } }
+            {
+                $project: {
+                    _id: 0,
+                    type: "$_id.type",
+                    category: "$_id.category",
+                    totalAmount: 1,
+                    count: 1
+                }
+            },
+            { $sort: { type: 1, totalAmount: -1 } }
         ]);
 
         res.json(summary);
