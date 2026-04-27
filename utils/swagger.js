@@ -13,7 +13,7 @@ const options = {
         },
         servers: [
             {
-                url: process.env.NODE_ENV == "development" ? 'http://localhost:5000' : 'https://mentership-api-66vn.on`render.com'
+                url: process.env.NODE_ENV == "development" ? 'http://localhost:5000' : 'https://personal-finance-tracker-api-rv5k.onrender.com'
             }
         ],
         components: {
