@@ -13,7 +13,7 @@ const options = {
         },
         servers: [
             {
-                url: process.env.NODE_ENV == "development" ? 'http://localhost:5000' : 'https://personal-finance-tracker-api-rv5k.onrender.com'
+                url: process.env.NODE_ENV == "development" ? 'http://localhost:5000' : 'https://personal-finance-tracker-api-1-gi78.onrender.com'
             }
         ],
         components: {
