@@ -1,4 +1,5 @@
 import Transaction from '../models/TransactionModel.js';
+import User from '../models/UserModel.js';
 
 // Add Transaction
 export const addTransaction = async (req, res, next) => {
@@ -12,6 +13,11 @@ export const addTransaction = async (req, res, next) => {
             category,
             date
         });
+
+        // Update user balance
+        const balanceChange = type === 'income' ? amount : -amount;
+        await User.findByIdAndUpdate(req.user._id, { $inc: { balance: balanceChange } });
+
         res.status(201).json(transaction);
     } catch (err) {
         next(err);
@@ -22,7 +28,11 @@ export const addTransaction = async (req, res, next) => {
 export const getTransactions = async (req, res, next) => {
     try {
         const transactions = await Transaction.find({ user: req.user._id }).sort({ date: -1 });
-        res.json(transactions);
+        const formattedTransactions = transactions.map(t => ({
+            ...t._doc,
+            amount: t.type === 'expense' ? -t.amount : t.amount
+        }));
+        res.json(formattedTransactions);
     } catch (err) {
         next(err);
     }
@@ -31,14 +41,25 @@ export const getTransactions = async (req, res, next) => {
 // Update Transaction
 export const updateTransaction = async (req, res, next) => {
     try {
-        const transaction = await Transaction.findOneAndUpdate(
-            { _id: req.params.id, user: req.user._id },
+        const oldTransaction = await Transaction.findOne({ _id: req.params.id, user: req.user._id });
+
+        if (!oldTransaction) {
+            return res.status(404).json({ message: 'Transaction not found or unauthorized' });
+        }
+
+        const transaction = await Transaction.findByIdAndUpdate(
+            req.params.id,
             req.body,
             { new: true, runValidators: true }
         );
 
-        if (!transaction) {
-            return res.status(404).json({ message: 'Transaction not found or unauthorized' });
+        // Update user balance based on the difference
+        const oldChange = oldTransaction.type === 'income' ? oldTransaction.amount : -oldTransaction.amount;
+        const newChange = transaction.type === 'income' ? transaction.amount : -transaction.amount;
+        const netChange = newChange - oldChange;
+
+        if (netChange !== 0) {
+            await User.findByIdAndUpdate(req.user._id, { $inc: { balance: netChange } });
         }
 
         res.json(transaction);
@@ -59,37 +80,46 @@ export const deleteTransaction = async (req, res, next) => {
             return res.status(404).json({ message: 'Transaction not found or unauthorized' });
         }
 
+        // Revert user balance
+        const balanceChange = transaction.type === 'income' ? transaction.amount : -transaction.amount;
+        await User.findByIdAndUpdate(req.user._id, { $inc: { balance: -balanceChange } });
+
         res.json({ message: 'Transaction removed' });
     } catch (err) {
         next(err);
     }
 };
 
-// Monthly Summary
+// Get Monthly Summary (Totals + List)
 export const getMonthlySummary = async (req, res, next) => {
     try {
-        const summary = await Transaction.aggregate([
+        const stats = await Transaction.aggregate([
             { $match: { user: req.user._id } },
             {
                 $group: {
-                    _id: { type: "$type", category: "$category" },
-                    totalAmount: { $sum: "$amount" },
-                    count: { $sum: 1 }
+                    _id: "$type",
+                    totalAmount: { $sum: "$amount" }
                 }
-            },
-            {
-                $project: {
-                    _id: 0,
-                    type: "$_id.type",
-                    category: "$_id.category",
-                    totalAmount: 1,
-                    count: 1
-                }
-            },
-            { $sort: { type: 1, totalAmount: -1 } }
+            }
         ]);
 
-        res.json(summary);
+        const income = stats.find(s => s._id === 'income')?.totalAmount || 0;
+        const expense = stats.find(s => s._id === 'expense')?.totalAmount || 0;
+        const balance = income - expense;
+
+        const transactions = await Transaction.find({ user: req.user._id }).sort({ date: -1 });
+
+        const formattedTransactions = transactions.map(t => ({
+            ...t._doc,
+            amount: t.type === 'expense' ? -t.amount : t.amount
+        }));
+
+        res.json({
+            totalIncome: income,
+            totalExpense: expense,
+            totalBalance: balance,
+            transactions: formattedTransactions
+        });
     } catch (err) {
         next(err);
     }

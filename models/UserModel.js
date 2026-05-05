@@ -11,7 +11,11 @@ const userSchema = new mongoose.Schema(
             enum: ['user', 'admin'],
             default: 'user'
         },
-        profilePic: String
+        profilePic: String,
+        balance: {
+            type: Number,
+            default: 0
+        }
 
     },
     { timestamps: true }

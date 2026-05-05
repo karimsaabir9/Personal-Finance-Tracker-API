@@ -4,12 +4,6 @@ import { protect } from '../middlewares/auth.js';
 import { validate } from '../middlewares/validateZod.js';
 import { transactionSchema, updateTransactionSchema } from '../schemas/transactionSchema.js';
 
-
-
-
-
-
-
 /**
  * @swagger
  * /transactions:
@@ -59,11 +53,11 @@ import { transactionSchema, updateTransactionSchema } from '../schemas/transacti
  * @swagger
  * /transactions/monthly-summary:
  *   get:
- *     summary: Get monthly summary
+ *     summary: Get monthly summary (Totals + List)
  *     tags: [Transactions]
  *     responses:
  *       200:
- *         description: Monthly summary
+ *         description: Monthly summary with totals and transaction list
  */
 
 /**

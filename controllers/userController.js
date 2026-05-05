@@ -36,11 +36,18 @@ export const getUserInfo = async (req, res, next) => {
 export const updateUser = async (req, res, next) => {
     const { id } = req.params;
     try {
-        const updatedUser = await User.findByIdAndUpdate(id, req.body, { new: true });
-        if (!updatedUser) {
-            return res.status(404).send("User not found")
+        const user = await User.findById(id);
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
         }
-        res.json(updatedUser)
+
+        // Update fields
+        Object.assign(user, req.body);
+
+        // Save will trigger the pre-save hook for password hashing
+        const updatedUser = await user.save();
+        
+        res.json(updatedUser);
     } catch (err) {
         next(err);
     }
@@ -51,9 +58,9 @@ export const deleteUser = async (req, res, next) => {
     try {
         const deletedUser = await User.findByIdAndDelete(id);
         if (!deletedUser) {
-            return res.status(404).send("User not found")
+            return res.status(404).json({ message: "User not found" });
         }
-        res.send(`User with id ${id} deleted`)
+        res.json({ message: `User with id ${id} deleted` });
     } catch (err) {
         next(err);
     }
